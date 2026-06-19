@@ -1,0 +1,734 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>~/downloads — Release Archive</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --ink: #16181d;
+    --ink-raised: #1c1f26;
+    --paper: #ede9e1;
+    --paper-dim: #9da3ad;
+    --slate: #5b6370;
+    --hairline: #2a2e37;
+    --hairline-soft: #23262e;
+    --amber: #e8a33d;
+    --amber-dim: #8a652b;
+    --green: #5fae7a;
+    --red: #c66b5e;
+    --mono: "IBM Plex Mono", "SF Mono", Consolas, monospace;
+    --sans: "Inter", -apple-system, sans-serif;
+    --radius: 3px;
+  }
+
+  * { box-sizing: border-box; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    margin: 0;
+    background: var(--ink);
+    color: var(--paper);
+    font-family: var(--sans);
+    font-size: 15px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  ::selection { background: var(--amber); color: var(--ink); }
+
+  a { color: inherit; }
+
+  :focus-visible {
+    outline: 2px solid var(--amber);
+    outline-offset: 2px;
+  }
+
+  /* ---------- layout shell ---------- */
+
+  .shell {
+    max-width: 880px;
+    margin: 0 auto;
+    padding: 0 24px 120px;
+  }
+
+  /* ---------- header / terminal banner ---------- */
+
+  header {
+    padding: 56px 0 32px;
+    border-bottom: 1px solid var(--hairline);
+    margin-bottom: 8px;
+  }
+
+  .path-line {
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--green);
+    margin-bottom: 18px;
+    display: flex;
+    align-items: center;
+    gap: 2px;
+  }
+
+  .path-line .typed::after {
+    content: "";
+    display: inline-block;
+    width: 8px;
+    height: 15px;
+    background: var(--green);
+    margin-left: 4px;
+    vertical-align: -2px;
+    animation: blink 1s steps(1) infinite;
+  }
+
+  @keyframes blink {
+    50% { opacity: 0; }
+  }
+
+  h1 {
+    font-family: var(--mono);
+    font-weight: 600;
+    font-size: clamp(28px, 5vw, 40px);
+    letter-spacing: -0.01em;
+    margin: 0 0 10px;
+  }
+
+  h1 .dim { color: var(--slate); font-weight: 400; }
+
+  .subhead {
+    color: var(--paper-dim);
+    font-size: 15px;
+    max-width: 52ch;
+    margin: 0 0 28px;
+  }
+
+  .stats-row {
+    display: flex;
+    gap: 24px;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--slate);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+
+  .stats-row strong {
+    color: var(--paper);
+    font-weight: 600;
+  }
+
+  /* ---------- controls ---------- */
+
+  .controls {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: var(--ink);
+    padding: 20px 0;
+    border-bottom: 1px solid var(--hairline-soft);
+    margin-bottom: 28px;
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+
+  .search-wrap {
+    position: relative;
+    flex: 1 1 240px;
+    min-width: 0;
+  }
+
+  .search-wrap::before {
+    content: "/";
+    position: absolute;
+    left: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--slate);
+    font-family: var(--mono);
+    font-size: 14px;
+    pointer-events: none;
+  }
+
+  #search {
+    width: 100%;
+    background: var(--ink-raised);
+    border: 1px solid var(--hairline);
+    border-radius: var(--radius);
+    padding: 10px 14px 10px 28px;
+    color: var(--paper);
+    font-family: var(--mono);
+    font-size: 14px;
+    transition: border-color 0.15s ease;
+  }
+
+  #search::placeholder { color: var(--slate); }
+
+  #search:focus {
+    border-color: var(--amber-dim);
+    outline: none;
+  }
+
+  .chip-row {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+
+  .chip {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--slate);
+    background: transparent;
+    border: 1px solid var(--hairline);
+    border-radius: var(--radius);
+    padding: 7px 11px;
+    cursor: pointer;
+    transition: all 0.12s ease;
+    white-space: nowrap;
+  }
+
+  .chip:hover { border-color: var(--slate); color: var(--paper); }
+
+  .chip.active {
+    background: var(--amber);
+    border-color: var(--amber);
+    color: var(--ink);
+    font-weight: 600;
+  }
+
+  /* ---------- entries ---------- */
+
+  .entry {
+    border: 1px solid var(--hairline);
+    border-radius: var(--radius);
+    margin-bottom: 10px;
+    background: var(--ink-raised);
+    overflow: hidden;
+    transition: border-color 0.15s ease;
+  }
+
+  .entry:hover { border-color: #3a3f4b; }
+
+  .entry-head {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 18px 20px;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .entry-icon {
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--ink);
+    background: var(--amber);
+    width: 34px;
+    height: 34px;
+    border-radius: var(--radius);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    font-weight: 700;
+  }
+
+  .entry-main { flex: 1; min-width: 0; }
+
+  .entry-name-row {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  .entry-name {
+    font-family: var(--mono);
+    font-weight: 600;
+    font-size: 16px;
+  }
+
+  .entry-tag {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--slate);
+    border: 1px solid var(--hairline);
+    padding: 2px 6px;
+    border-radius: var(--radius);
+  }
+
+  .entry-desc {
+    color: var(--paper-dim);
+    font-size: 13.5px;
+    margin-top: 4px;
+  }
+
+  .entry-meta {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--slate);
+    text-align: right;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .entry-meta .ver {
+    color: var(--green);
+    font-weight: 600;
+  }
+
+  .chevron {
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+    color: var(--slate);
+    transition: transform 0.18s ease;
+  }
+
+  .entry.open .chevron { transform: rotate(90deg); }
+
+  .entry-body {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.25s ease;
+  }
+
+  .entry.open .entry-body {
+    max-height: 600px;
+  }
+
+  .manifest {
+    border-top: 1px solid var(--hairline-soft);
+    padding: 4px 20px 14px;
+  }
+
+  .manifest-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 11px 0;
+    border-bottom: 1px solid var(--hairline-soft);
+    font-family: var(--mono);
+    font-size: 13px;
+  }
+
+  .manifest-row:last-child { border-bottom: none; }
+
+  .manifest-row .mr-version {
+    color: var(--paper);
+    font-weight: 600;
+    min-width: 64px;
+  }
+
+  .manifest-row .mr-filename {
+    color: var(--paper-dim);
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .manifest-row .mr-size {
+    color: var(--slate);
+    min-width: 60px;
+    text-align: right;
+  }
+
+  .manifest-row .mr-date {
+    color: var(--slate);
+    min-width: 84px;
+    text-align: right;
+    display: none;
+  }
+
+  @media (min-width: 560px) {
+    .manifest-row .mr-date { display: block; }
+  }
+
+  .badge-latest {
+    font-size: 10px;
+    color: var(--green);
+    border: 1px solid #2e4a38;
+    background: #1a241d;
+    padding: 1px 5px;
+    border-radius: 2px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  .dl-btn {
+    background: transparent;
+    border: 1px solid var(--hairline);
+    color: var(--paper);
+    font-family: var(--mono);
+    font-size: 12px;
+    padding: 6px 10px;
+    border-radius: var(--radius);
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.12s ease;
+    flex-shrink: 0;
+  }
+
+  .dl-btn:hover {
+    border-color: var(--amber);
+    color: var(--amber);
+  }
+
+  .dl-btn svg { width: 12px; height: 12px; }
+
+  /* ---------- empty state ---------- */
+
+  .empty {
+    text-align: center;
+    padding: 80px 20px;
+    color: var(--slate);
+    font-family: var(--mono);
+  }
+
+  .empty .glyph {
+    font-size: 13px;
+    color: var(--amber-dim);
+    margin-bottom: 14px;
+  }
+
+  .empty p { margin: 0; font-size: 14px; }
+
+  /* ---------- footer note ---------- */
+
+  footer {
+    margin-top: 48px;
+    padding-top: 20px;
+    border-top: 1px solid var(--hairline-soft);
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--slate);
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  footer a { color: var(--amber-dim); text-decoration: none; }
+  footer a:hover { color: var(--amber); }
+
+  /* ---------- toast (copy confirmation) ---------- */
+
+  .toast {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: var(--ink-raised);
+    border: 1px solid var(--green);
+    color: var(--paper);
+    font-family: var(--mono);
+    font-size: 13px;
+    padding: 10px 16px;
+    border-radius: var(--radius);
+    opacity: 0;
+    pointer-events: none;
+    transition: all 0.2s ease;
+    z-index: 50;
+  }
+
+  .toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.001ms !important;
+      transition-duration: 0.001ms !important;
+    }
+  }
+
+  @media (max-width: 520px) {
+    .entry-meta { display: none; }
+    .stats-row { gap: 14px; flex-wrap: wrap; }
+  }
+</style>
+</head>
+<body>
+
+<div class="shell">
+  <header>
+    <div class="path-line"><span id="typedPath" class="typed"></span></div>
+    <h1>Release <span class="dim">archive</span></h1>
+    <p class="subhead">Every build, every version, kept on record. Pick a project below to see its full version history.</p>
+    <div class="stats-row">
+      <span><strong id="statProjects">0</strong> projects</span>
+      <span><strong id="statFiles">0</strong> files</span>
+      <span><strong id="statSize">0 B</strong> total</span>
+    </div>
+  </header>
+
+  <div class="controls">
+    <div class="search-wrap">
+      <input id="search" type="text" placeholder="search downloads…" autocomplete="off" />
+    </div>
+    <div class="chip-row" id="categoryChips"></div>
+  </div>
+
+  <main id="entries"></main>
+
+  <footer>
+    <span>served from <code>downloads.json</code> — run <code>node build-manifest.js</code> after adding files</span>
+    <span id="genTime"></span>
+  </footer>
+</div>
+
+<div class="toast" id="toast">Link copied</div>
+
+<script>
+(function () {
+  "use strict";
+
+  const state = {
+    data: null,
+    query: "",
+    category: "All",
+    openIds: new Set(),
+  };
+
+  const els = {
+    entries: document.getElementById("entries"),
+    search: document.getElementById("search"),
+    chips: document.getElementById("categoryChips"),
+    statProjects: document.getElementById("statProjects"),
+    statFiles: document.getElementById("statFiles"),
+    statSize: document.getElementById("statSize"),
+    genTime: document.getElementById("genTime"),
+    toast: document.getElementById("toast"),
+  };
+
+  function escapeHtml(str) {
+    return String(str).replace(/[&<>"']/g, (c) => ({
+      "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+    }[c]));
+  }
+
+  function humanFileSize(bytes) {
+    if (!Number.isFinite(bytes)) return "—";
+    const units = ["B", "KB", "MB", "GB", "TB"];
+    let i = 0, size = bytes;
+    while (size >= 1024 && i < units.length - 1) { size /= 1024; i++; }
+    const precision = i === 0 ? 0 : size < 10 ? 2 : 1;
+    return `${size.toFixed(precision)} ${units[i]}`;
+  }
+
+  function formatDate(iso) {
+    try {
+      const d = new Date(iso);
+      return d.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+    } catch (e) { return ""; }
+  }
+
+  function initial(name) {
+    const clean = name.trim();
+    return clean ? clean[0].toUpperCase() : "?";
+  }
+
+  function getDownloadCount(id) {
+    try {
+      const raw = localStorage.getItem("dl_counts");
+      const map = raw ? JSON.parse(raw) : {};
+      return map[id] || 0;
+    } catch (e) { return 0; }
+  }
+
+  function bumpDownloadCount(id) {
+    try {
+      const raw = localStorage.getItem("dl_counts");
+      const map = raw ? JSON.parse(raw) : {};
+      map[id] = (map[id] || 0) + 1;
+      localStorage.setItem("dl_counts", JSON.stringify(map));
+    } catch (e) { /* localStorage unavailable, ignore */ }
+  }
+
+  function showToast(msg) {
+    els.toast.textContent = msg;
+    els.toast.classList.add("show");
+    clearTimeout(showToast._t);
+    showToast._t = setTimeout(() => els.toast.classList.remove("show"), 1800);
+  }
+
+  function typePath() {
+    const target = document.getElementById("typedPath");
+    const text = "guest@archive:~/downloads$ ls -la";
+    let i = 0;
+    function step() {
+      target.textContent = text.slice(0, i);
+      i++;
+      if (i <= text.length) {
+        setTimeout(step, 18 + Math.random() * 22);
+      }
+    }
+    step();
+  }
+
+  function buildCategoryChips(projects) {
+    const cats = ["All", ...new Set(projects.map((p) => p.category))];
+    els.chips.innerHTML = cats.map((c) =>
+      `<button class="chip${c === state.category ? " active" : ""}" data-cat="${escapeHtml(c)}">${escapeHtml(c)}</button>`
+    ).join("");
+    els.chips.querySelectorAll(".chip").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        state.category = btn.dataset.cat;
+        render();
+      });
+    });
+  }
+
+  function matchesQuery(project, q) {
+    if (!q) return true;
+    const hay = (project.name + " " + project.description + " " + project.category + " " +
+      project.versions.map((v) => v.filename).join(" ")).toLowerCase();
+    return hay.includes(q.toLowerCase());
+  }
+
+  function entryTemplate(project) {
+    const isOpen = state.openIds.has(project.id);
+    const dlCount = getDownloadCount(project.id);
+    const latest = project.latest;
+
+    const rows = project.versions.map((v, idx) => `
+      <div class="manifest-row">
+        <span class="mr-version">${escapeHtml(v.version || "—")}${idx === 0 ? ' <span class="badge-latest">latest</span>' : ""}</span>
+        <span class="mr-filename" title="${escapeHtml(v.filename)}">${escapeHtml(v.filename)}</span>
+        <span class="mr-size">${escapeHtml(v.sizeLabel)}</span>
+        <span class="mr-date">${escapeHtml(formatDate(v.modified))}</span>
+        <a class="dl-btn" href="${encodeURI(v.url)}" download data-project="${escapeHtml(project.id)}">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6">
+            <path d="M8 2v8m0 0L5 7m3 3l3-3M3 13h10" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          get
+        </a>
+      </div>
+    `).join("");
+
+    return `
+      <div class="entry${isOpen ? " open" : ""}" data-id="${escapeHtml(project.id)}">
+        <div class="entry-head" data-toggle="${escapeHtml(project.id)}">
+          <div class="entry-icon">${escapeHtml(initial(project.name))}</div>
+          <div class="entry-main">
+            <div class="entry-name-row">
+              <span class="entry-name">${escapeHtml(project.name)}</span>
+              <span class="entry-tag">${escapeHtml(project.category)}</span>
+            </div>
+            ${project.description ? `<div class="entry-desc">${escapeHtml(project.description)}</div>` : ""}
+          </div>
+          <div class="entry-meta">
+            <span class="ver">${latest ? escapeHtml(latest.version || "") : ""}</span>
+            <span>${project.versions.length} file${project.versions.length === 1 ? "" : "s"} · ${dlCount} dl${dlCount === 1 ? "" : "s"}</span>
+          </div>
+          <svg class="chevron" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6">
+            <path d="M6 3l5 5-5 5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <div class="entry-body">
+          <div class="manifest">${rows}</div>
+        </div>
+      </div>
+    `;
+  }
+
+  function render() {
+    if (!state.data) return;
+    const { projects } = state.data;
+
+    const filtered = projects.filter((p) =>
+      (state.category === "All" || p.category === state.category) &&
+      matchesQuery(p, state.query)
+    );
+
+    if (filtered.length === 0) {
+      els.entries.innerHTML = `
+        <div class="empty">
+          <div class="glyph">∅</div>
+          <p>No matches for "${escapeHtml(state.query)}"${state.category !== "All" ? ` in ${escapeHtml(state.category)}` : ""}.</p>
+        </div>`;
+      return;
+    }
+
+    els.entries.innerHTML = filtered.map(entryTemplate).join("");
+
+    els.entries.querySelectorAll("[data-toggle]").forEach((head) => {
+      head.addEventListener("click", () => {
+        const id = head.dataset.toggle;
+        if (state.openIds.has(id)) state.openIds.delete(id);
+        else state.openIds.add(id);
+        render();
+      });
+    });
+
+    els.entries.querySelectorAll(".dl-btn").forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const id = btn.dataset.project;
+        bumpDownloadCount(id);
+        showToast("Download started");
+        // Defer re-render slightly so the click/download isn't interrupted.
+        setTimeout(render, 50);
+      });
+    });
+  }
+
+  function applyStats(data) {
+    els.statProjects.textContent = data.projectCount;
+    els.statFiles.textContent = data.fileCount;
+    const totalBytes = data.projects.reduce((sum, p) => sum + (p.totalSize || 0), 0);
+    els.statSize.textContent = humanFileSize(totalBytes);
+    if (data.generatedAt) {
+      els.genTime.textContent = "manifest built " + formatDate(data.generatedAt);
+    }
+  }
+
+  function init(data) {
+    state.data = data;
+    applyStats(data);
+    buildCategoryChips(data.projects);
+    render();
+  }
+
+  els.search.addEventListener("input", (e) => {
+    state.query = e.target.value.trim();
+    render();
+  });
+
+  typePath();
+
+  fetch("downloads.json", { cache: "no-store" })
+    .then((res) => {
+      if (!res.ok) throw new Error("downloads.json not found (" + res.status + ")");
+      return res.json();
+    })
+    .then(init)
+    .catch((err) => {
+      els.entries.innerHTML = `
+        <div class="empty">
+          <div class="glyph">!</div>
+          <p>Couldn't load downloads.json — ${escapeHtml(err.message)}.</p>
+          <p style="margin-top:8px;">Run <code>node build-manifest.js</code> to generate it, and make sure you're serving these files over HTTP (not opening index.html directly via file://).</p>
+        </div>`;
+    });
+})();
+</script>
+
+</body>
+</html>
