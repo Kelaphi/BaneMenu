@@ -17,14 +17,6 @@ The most powerful BepInEx mod menu for Among Us ever, with QoL tools, host utili
 
 ## Features
 
-High-level overview (not exhaustive):
-
-### Menu / QoL
-- In-game IMGUI menu with sections, subsections, and config autosave
-- Customizable UI scale and primary color
-- Title screen version watermark
-- Notifications for key actions
-
 ### Self / Movement
 - Speed options, vent / ladder / zipline helpers
 - Shift + right-click teleport (single) and Ctrl + right-click hold teleport
