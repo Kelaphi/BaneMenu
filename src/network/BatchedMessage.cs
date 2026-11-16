@@ -1,0 +1,760 @@
+﻿using AmongUs.GameOptions;
+using AmongUs.InnerNet.GameDataMessages;
+using Hazel;
+using InnerNet;
+using UnityEngine;
+
+namespace BaneMenu.network
+{
+	internal class BatchedMessage
+	{
+		public readonly MessageWriter writer;
+		public readonly int targetClientId;
+		public bool skipLocalHandling = false;
+		public int msgCount = 0;
+
+		public BatchedMessage(int targetClientId = (int)OwnerIds.Everyone)
+		{
+			writer = MessageWriter.Get(SendOption.Reliable);
+
+			this.targetClientId = targetClientId;
+			if(targetClientId == (int)OwnerIds.Everyone)
+			{
+				writer.StartMessage(InnerNet.Tags.GameData);
+				writer.Write(AmongUsClient.Instance.GameId);
+			}
+			else
+			{
+				writer.StartMessage(InnerNet.Tags.GameDataTo);
+				writer.Write(AmongUsClient.Instance.GameId);
+				writer.WritePacked(targetClientId);
+			}
+		}
+
+		private bool IsGlobal
+		{
+			get { return targetClientId == (int)OwnerIds.Everyone; }
+		}
+
+		private bool AmTarget
+		{
+			get { return targetClientId == AmongUsClient.Instance.ClientId; }
+		}
+
+		public void QueueDataFlag(uint netId, MessageWriter msg)
+		{
+			writer.StartMessage((byte)GameDataTypes.DataFlag);
+			writer.WritePacked(netId);
+			writer.Write(msg, false);
+			writer.EndMessage();
+
+			msgCount++;
+		}
+
+		public void QueueSpawn(InnerNetObject netObject, int ownerId = (int)OwnerIds.Host, SpawnFlags flags = SpawnFlags.None)
+		{
+			SpawnGameDataMessage spawn = AmongUsClient.Instance.CreateSpawnMessage(netObject, ownerId, flags);
+			spawn.Serialize(writer);
+
+			msgCount++;
+		}
+
+		public void QueueDespawn(InnerNetObject netObject)
+		{
+			// Keep a copy of the net object's net ID
+			// AmongUsClient::RemoveNetObject will result in the net object's net ID being set to uint.MaxValue
+			uint netId = netObject.NetId;
+
+			if(IsGlobal || AmTarget)
+			{
+				Object.Destroy(netObject.gameObject);
+				AmongUsClient.Instance.RemoveNetObject(netObject);
+				if(AmTarget) return;
+			}
+
+			QueueDespawn(netId);
+		}
+
+		public void QueueDespawn(uint netId)
+		{
+			writer.StartMessage((byte)GameDataTypes.DespawnFlag);
+			writer.WritePacked(netId);
+			writer.EndMessage();
+
+			msgCount++;
+		}
+
+		public void QueueClientReady(int clientId)
+		{
+			ClientData client = AmongUsClient.Instance.FindClientById(clientId);
+			QueueClientReady(client);
+		}
+
+		public void QueueClientReady(ClientData client)
+		{
+			if(IsGlobal || AmTarget)
+			{
+				client.IsReady = true;
+				if(AmTarget) return;
+			}
+
+			writer.StartMessage((byte)GameDataTypes.ReadyFlag);
+			writer.WritePacked(client.Id);
+			writer.EndMessage();
+
+			msgCount++;
+		}
+
+		public void QueueCompleteTask(PlayerControl source, uint taskIndex)
+		{
+			if(IsGlobal || AmTarget)
+			{
+				source.CompleteTask(taskIndex);
+				if(AmTarget) return;
+			}
+
+			writer.StartMessage((byte)GameDataTypes.RpcFlag);
+			writer.WritePacked(source.NetId);
+			writer.Write((byte)RpcCalls.CompleteTask);
+			writer.WritePacked(taskIndex);
+			writer.EndMessage();
+
+			msgCount++;
+		}
+
+		public void QueueSetName(PlayerControl source, string name)
+		{
+			if(IsGlobal || AmTarget)
+			{
+				source.SetName(name);
+				if(AmTarget) return;
+			}
+
+			writer.StartMessage((byte)GameDataTypes.RpcFlag);
+			writer.WritePacked(source.NetId);
+			writer.Write((byte)RpcCalls.SetName);
+			writer.Write(source.NetId);
+			writer.Write(name);
+			writer.EndMessage();
+
+			msgCount++;
+		}
+
+		public void QueueSetColor(PlayerControl source, byte color)
+		{
+			if(IsGlobal || AmTarget)
+			{
+				source.SetColor(color);
+				if(AmTarget) return;
+			}
+
+			writer.StartMessage((byte)GameDataTypes.RpcFlag);
+			writer.WritePacked(source.NetId);
+			writer.Write((byte)RpcCalls.SetColor);
+			writer.Write(source.Data.NetId);
+			writer.Write(color);
+			writer.EndMessage();
+
+			msgCount++;
+		}
+
+		public void QueueMurderPlayer(PlayerControl source, PlayerControl target, MurderResultFlags result)
+		{
+			if(IsGlobal || AmTarget)
+			{
+				source.MurderPlayer(target, result);
+				if(AmTarget) return;
+			}
+
+			writer.StartMessage((byte)GameDataTypes.RpcFlag);
+			writer.WritePacked(source.NetId);
+			writer.Write((byte)RpcCalls.MurderPlayer);
+			writer.WritePacked(target.NetId);
+			writer.Write((int)result);
+			writer.EndMessage();
+
+			msgCount++;
+		}
+
+		public void QueueSendChat(PlayerControl source, string text)
+		{
+			if(IsGlobal || AmTarget)
+			{
+				HudManager.Instance.Chat.AddChat(source, text, false);
+				if(AmTarget) return;
+			}
+
+			writer.StartMessage((byte)GameDataTypes.RpcFlag);
+			writer.WritePacked(source.NetId);
+			writer.Write((byte)RpcCalls.SendChat);
+			writer.Write(text);
+			writer.EndMessage();
+
+			msgCount++;
+		}
+
+		public void QueueSetScanner(PlayerControl source, bool scanning)
+		{
+			QueueSetScanner(source, scanning, ++source.scannerCount);
+		}
+
+		public void QueueSetScanner(PlayerControl source, bool scanning, byte seq)
+		{
+			if(IsGlobal || AmTarget)
+			{
+				source.SetScanner(scanning, seq);
+				if(AmTarget) return;
+			}
+
+			writer.StartMessage((byte)GameDataTypes.RpcFlag);
+			writer.WritePacked(source.NetId);
+			writer.Write((byte)RpcCalls.SetScanner);
+			writer.Write(scanning);
+			writer.Write(seq);
+			writer.EndMessage();
+
+			msgCount++;
+		}
+
+		public void QueueSetStartCounter(PlayerControl source, sbyte counter)
+		{
+			QueueSetStartCounter(source, counter, source.LastStartCounter + 1);
+		}
+
+		public void QueueSetStartCounter(PlayerControl source, sbyte counter, int seqId)
+		{
+			if(IsGlobal || AmTarget)
+			{
+				if(GameStartManager.InstanceExists)
+				{
+					source.LastStartCounter = seqId;
+					GameStartManager.Instance.SetStartCounter(counter);
+				}
+
+				if(AmTarget) return;
+			}
+
+			writer.StartMessage((byte)GameDataTypes.RpcFlag);
+			writer.WritePacked(source.NetId);
+			writer.Write((byte)RpcCalls.SetStartCounter);
+			writer.WritePacked(seqId);
+			writer.Write(counter);
+			writer.EndMessage();
+
+			msgCount++;
+		}
+
+		public void QueueSendChatNote(PlayerControl source, byte playerId, ChatNoteTypes chatNote)
+		{
+			if(IsGlobal || AmTarget)
+			{
+				NetworkedPlayerInfo player = GameData.Instance.GetPlayerById(playerId);
+				HudManager.Instance.Chat.AddChatNote(player, chatNote);
+				if(AmTarget) return;
+			}
+
+			writer.StartMessage((byte)GameDataTypes.RpcFlag);
+			writer.WritePacked(source.NetId);
+			writer.Write((byte)RpcCalls.SendChatNote);
+			writer.Write(playerId);
+			writer.Write((byte)chatNote);
+			writer.EndMessage();
+
+			msgCount++;
+		}
+
+		public void QueueSnapTo(PlayerControl source, Vector2 position)
+		{
+			// Capture seq once - old code SnapTo'd with +1 then sent +2 from the *updated*
+			// lastSequenceId, so remotes could ignore the RPC while local still moved.
+			ushort seqId = (ushort)(source.NetTransform.lastSequenceId + 1);
+
+			if(IsGlobal || AmTarget)
+			{
+				source.NetTransform.SnapTo(position, seqId);
+				if(AmTarget) return;
+			}
+
+			writer.StartMessage((byte)GameDataTypes.RpcFlag);
+			writer.WritePacked(source.NetTransform.NetId);
+			writer.Write((byte)RpcCalls.SnapTo);
+			NetHelpers.WriteVector2(position, writer);
+			writer.Write(seqId);
+			writer.EndMessage();
+
+			msgCount++;
+		}
+
+		/// <summary>
+		/// SnapTo RPC only - does NOT apply locally. Use to preview what remote clients see.
+		/// </summary>
+		public void QueueSnapToNetworkOnly(PlayerControl source, Vector2 position)
+		{
+			if (source == null || source.NetTransform == null) return;
+			ushort seqId = (ushort)(source.NetTransform.lastSequenceId + 1);
+			// Bump local seq so later snaps stay ordered, without moving the body on this client
+			try { source.NetTransform.lastSequenceId = seqId; } catch { }
+
+			writer.StartMessage((byte)GameDataTypes.RpcFlag);
+			writer.WritePacked(source.NetTransform.NetId);
+			writer.Write((byte)RpcCalls.SnapTo);
+			NetHelpers.WriteVector2(position, writer);
+			writer.Write(seqId);
+			writer.EndMessage();
+			msgCount++;
+		}
+
+		public void QueueCloseMeeting()
+		{
+			if(IsGlobal || AmTarget)
+			{
+				MeetingHud.Instance.Close();
+				if(AmTarget) return;
+			}
+
+			writer.StartMessage((byte)GameDataTypes.RpcFlag);
+			writer.WritePacked(MeetingHud.Instance.NetId);
+			writer.Write((byte)RpcCalls.CloseMeeting);
+			writer.EndMessage();
+
+			msgCount++;
+		}
+
+		/// <summary>CloseMeeting RPC only (no local MeetingHud.Close). For GameDataTo tests.</summary>
+		public void QueueCloseMeetingByNetId(uint meetingNetId)
+		{
+			writer.StartMessage((byte)GameDataTypes.RpcFlag);
+			writer.WritePacked(meetingNetId);
+			writer.Write((byte)RpcCalls.CloseMeeting);
+			writer.EndMessage();
+			msgCount++;
+		}
+
+		public void QueueVotingComplete(MeetingHud.VoterState[] voteStates, NetworkedPlayerInfo ejectedPlayer, bool isTie, bool wasOverruled, ushort overruleNonce)
+		{
+			if(IsGlobal || AmTarget)
+			{
+				MeetingHud.Instance.VotingComplete(voteStates, ejectedPlayer, isTie, wasOverruled, overruleNonce);
+				if(AmTarget) return;
+			}
+
+			writer.StartMessage((byte)GameDataTypes.RpcFlag);
+			writer.WritePacked(MeetingHud.Instance.NetId);
+			writer.Write((byte)RpcCalls.VotingComplete);
+
+			writer.WritePacked(voteStates.Length);
+
+			foreach(MeetingHud.VoterState state in voteStates)
+			{
+				state.Serialize(writer);
+			}
+
+			writer.Write(ejectedPlayer != null ? ejectedPlayer.PlayerId : byte.MaxValue);
+			writer.Write(isTie);
+			writer.Write(wasOverruled);
+			writer.Write(overruleNonce);
+
+			writer.EndMessage();
+
+			msgCount++;
+		}
+
+		public void QueueAddVote(int sourceId, int targetId)
+		{
+			if(IsGlobal || AmTarget)
+			{
+				VoteBanSystem.Instance.AddVote(sourceId, targetId);
+				if(AmTarget) return;
+			}
+
+			writer.StartMessage((byte)GameDataTypes.RpcFlag);
+			writer.WritePacked(VoteBanSystem.Instance.NetId);
+			writer.Write((byte)RpcCalls.AddVote);
+			writer.Write(sourceId);
+			writer.Write(targetId);
+			writer.EndMessage();
+
+			msgCount++;
+		}
+
+		public void QueueCloseDoors(SystemTypes door)
+		{
+			if(IsGlobal || AmTarget)
+			{
+				ShipStatus.Instance.CloseDoorsOfType(door);
+				if(AmTarget) return;
+			}
+
+			writer.StartMessage((byte)GameDataTypes.RpcFlag);
+			writer.WritePacked(ShipStatus.Instance.NetId);
+			writer.Write((byte)RpcCalls.CloseDoorsOfType);
+			writer.Write((byte)door);
+			writer.EndMessage();
+
+			msgCount++;
+		}
+
+		public void QueueSetTasks(NetworkedPlayerInfo player, byte[] tasks)
+		{
+			if(IsGlobal || AmTarget)
+			{
+				player.SetTasks(tasks);
+				if(AmTarget) return;
+			}
+
+			writer.StartMessage((byte)GameDataTypes.RpcFlag);
+			writer.WritePacked(player.NetId);
+			writer.Write((byte)RpcCalls.SetTasks);
+			writer.WriteBytesAndSize(tasks);
+			writer.EndMessage();
+
+			msgCount++;
+		}
+
+		public void QueueUpdateSystem(PlayerControl source, SystemTypes system, byte value)
+		{
+			if(IsGlobal || AmTarget)
+			{
+				ShipStatus.Instance.UpdateSystem(system, source, value);
+				if(AmTarget) return;
+			}
+
+			writer.StartMessage((byte)GameDataTypes.RpcFlag);
+			writer.WritePacked(ShipStatus.Instance.NetId);
+			writer.Write((byte)RpcCalls.UpdateSystem);
+			writer.Write((byte)system);
+			writer.WriteNetObject(source);
+			writer.Write(value);
+			writer.EndMessage();
+
+			msgCount++;
+		}
+
+		public void QueueUpdateSystem(PlayerControl source, SystemTypes system, MessageWriter msg)
+		{
+			if(IsGlobal || AmTarget)
+			{
+				MessageReader reader = MessageReader.Get(msg.ToByteArray(false));
+				ShipStatus.Instance.UpdateSystem(system, source, reader);
+
+				if(AmTarget) return;
+			}
+
+			writer.StartMessage((byte)GameDataTypes.RpcFlag);
+			writer.WritePacked(ShipStatus.Instance.NetId);
+			writer.Write((byte)RpcCalls.UpdateSystem);
+			writer.Write((byte)system);
+			writer.WriteNetObject(source);
+			writer.Write(msg, false);
+			writer.EndMessage();
+
+			msgCount++;
+		}
+
+		public void QueueSetHatStr(PlayerControl source, string hat)
+		{
+			QueueSetHatStr(source, hat, ++source.Data.DefaultOutfit.HatSequenceId);
+		}
+
+		public void QueueSetHatStr(PlayerControl source, string hat, byte seqId)
+		{
+			if(IsGlobal || AmTarget)
+			{
+				source.SetHat(hat, source.Data.DefaultOutfit.ColorId);
+				if(AmTarget) return;
+			}
+
+			writer.StartMessage((byte)GameDataTypes.RpcFlag);
+			writer.WritePacked(source.NetId);
+			writer.Write((byte)RpcCalls.SetHatStr);
+			writer.Write(hat);
+			writer.Write(seqId);
+			writer.EndMessage();
+
+			msgCount++;
+		}
+
+		public void QueueSetSkinStr(PlayerControl source, string skin)
+		{
+			QueueSetSkinStr(source, skin, ++source.Data.DefaultOutfit.SkinSequenceId);
+		}
+
+		public void QueueSetSkinStr(PlayerControl source, string skin, byte seqId)
+		{
+			if(IsGlobal || AmTarget)
+			{
+				source.SetSkin(skin, source.Data.DefaultOutfit.ColorId);
+				if(AmTarget) return;
+			}
+
+			writer.StartMessage((byte)GameDataTypes.RpcFlag);
+			writer.WritePacked(source.NetId);
+			writer.Write((byte)RpcCalls.SetSkinStr);
+			writer.Write(skin);
+			writer.Write(seqId);
+			writer.EndMessage();
+
+			msgCount++;
+		}
+
+		public void QueueSetPetStr(PlayerControl source, string pet)
+		{
+			QueueSetPetStr(source, pet, ++source.Data.DefaultOutfit.PetSequenceId);
+		}
+
+		public void QueueSetPetStr(PlayerControl source, string pet, byte seqId)
+		{
+			if(IsGlobal || AmTarget)
+			{
+				source.SetPet(pet, source.Data.DefaultOutfit.ColorId);
+				if(AmTarget) return;
+			}
+
+			writer.StartMessage((byte)GameDataTypes.RpcFlag);
+			writer.WritePacked(source.NetId);
+			writer.Write((byte)RpcCalls.SetPetStr);
+			writer.Write(pet);
+			writer.Write(seqId);
+			writer.EndMessage();
+
+			msgCount++;
+		}
+
+		public void QueueSetVisorStr(PlayerControl source, string visor)
+		{
+			QueueSetVisorStr(source, visor, ++source.Data.DefaultOutfit.VisorSequenceId);
+		}
+
+		public void QueueSetVisorStr(PlayerControl source, string visor, byte seqId)
+		{
+			if(IsGlobal || AmTarget)
+			{
+				source.SetVisor(visor, source.Data.DefaultOutfit.ColorId);
+				if(AmTarget) return;
+			}
+
+			writer.StartMessage((byte)GameDataTypes.RpcFlag);
+			writer.WritePacked(source.NetId);
+			writer.Write((byte)RpcCalls.SetVisorStr);
+			writer.Write(visor);
+			writer.Write(seqId);
+			writer.EndMessage();
+
+			msgCount++;
+		}
+
+		public void QueueSetNameplateStr(PlayerControl source, string nameplate)
+		{
+			QueueSetNameplateStr(source, nameplate, ++source.Data.DefaultOutfit.NamePlateSequenceId);
+		}
+
+		public void QueueSetNameplateStr(PlayerControl source, string nameplate, byte seqId)
+		{
+			if(IsGlobal || AmTarget)
+			{
+				source.SetNamePlate(nameplate);
+				if(AmTarget) return;
+			}
+
+			writer.StartMessage((byte)GameDataTypes.RpcFlag);
+			writer.WritePacked(source.NetId);
+			writer.Write((byte)RpcCalls.SetNamePlateStr);
+			writer.Write(nameplate);
+			writer.Write(seqId);
+			writer.EndMessage();
+
+			msgCount++;
+		}
+
+		public void QueueSetRole(PlayerControl source, RoleTypes role, bool canOverride = false)
+		{
+			if(IsGlobal || AmTarget)
+			{
+				source.StartCoroutine(source.CoSetRole(role, canOverride));
+				if(AmTarget) return;
+			}
+
+			writer.StartMessage((byte)GameDataTypes.RpcFlag);
+			writer.WritePacked(source.NetId);
+			writer.Write((byte)RpcCalls.SetRole);
+			writer.Write((ushort)role);
+			writer.Write(canOverride);
+			writer.EndMessage();
+
+			msgCount++;
+		}
+
+		public void QueueShapeshift(PlayerControl source, PlayerControl target, bool shouldAnimate)
+		{
+			if(IsGlobal || AmTarget)
+			{
+				source.Shapeshift(target, shouldAnimate);
+				if(AmTarget) return;
+			}
+
+			writer.StartMessage((byte)GameDataTypes.RpcFlag);
+			writer.WritePacked(source.NetId);
+			writer.Write((byte)RpcCalls.Shapeshift);
+			writer.WriteNetObject(target);
+			writer.Write(shouldAnimate);
+			writer.EndMessage();
+
+			msgCount++;
+		}
+
+		public void QueueUseZipline(PlayerControl source, ZiplineBehaviour zipline, bool fromTop)
+		{
+			if(IsGlobal || AmTarget)
+			{
+				zipline.Use(source, fromTop);
+				if(AmTarget) return;
+			}
+
+			writer.StartMessage((byte)GameDataTypes.RpcFlag);
+			writer.WritePacked(source.NetId);
+			writer.Write((byte)RpcCalls.UseZipline);
+			writer.Write(fromTop);
+			writer.EndMessage();
+
+			msgCount++;
+		}
+
+		public void QueueTriggerSpore(PlayerControl source, Mushroom mushroom)
+		{
+			if(IsGlobal || AmTarget)
+			{
+				mushroom.TriggerSpores();
+				if(AmTarget) return;
+			}
+
+			writer.StartMessage((byte)GameDataTypes.RpcFlag);
+			writer.WritePacked(source.NetId);
+			writer.Write((byte)RpcCalls.TriggerSpores);
+			writer.Write(mushroom.Id);
+			writer.EndMessage();
+
+			msgCount++;
+		}
+
+		public void QueueLobbyTimeExpiring(int timer)
+		{
+			if(IsGlobal || AmTarget)
+			{
+				if(LobbyBehaviour.Instance != null)
+					LobbyBehaviour.Instance.HandleLobbyTimerExtensionRequest(timer, false, 255, 0, 0);
+				if(AmTarget) return;
+			}
+
+			if(LobbyBehaviour.Instance == null) return;
+
+			writer.StartMessage((byte)GameDataTypes.RpcFlag);
+			writer.WritePacked(LobbyBehaviour.Instance.NetId);
+			writer.Write((byte)RpcCalls.LobbyTimeExpiring);
+			writer.WritePacked(timer);
+			writer.Write(false);
+			writer.EndMessage();
+
+			msgCount++;
+		}
+
+		public void QueueVanish(PlayerControl source)
+		{
+			if(IsGlobal || AmTarget)
+			{
+				source.SetRoleInvisibility(true, true, false);
+				source.HandleServerVanish();
+				if(AmTarget) return;
+			}
+
+			writer.StartMessage((byte)GameDataTypes.RpcFlag);
+			writer.WritePacked(source.NetId);
+			writer.Write((byte)RpcCalls.StartVanish);
+			writer.EndMessage();
+
+			msgCount++;
+		}
+
+		public void QueueAppear(PlayerControl source, bool shouldAnimate = true)
+		{
+			if(IsGlobal || AmTarget)
+			{
+				source.HandleServerAppear(shouldAnimate);
+				if(AmTarget) return;
+			}
+
+			writer.StartMessage((byte)GameDataTypes.RpcFlag);
+			writer.WritePacked(source.NetId);
+			writer.Write((byte)RpcCalls.StartAppear);
+			writer.Write(shouldAnimate);
+			writer.EndMessage();
+
+			msgCount++;
+		}
+
+
+		public void QueueInfluencerMessage(byte[] sprites)
+		{
+			if(IsGlobal || AmTarget)
+			{
+				MessageWriter spritesWriter = MessageWriter.Get(SendOption.None);
+				spritesWriter.WriteBytesAndSize(sprites);
+
+				ShipStatus.Instance.socialMediumFeedSystem.HandleSpiritGuideMessage(MessageReader.Get(spritesWriter.ToByteArray(false)));
+
+				if(AmTarget) return;
+			}
+
+			writer.StartMessage((byte)GameDataTypes.RpcFlag);
+			writer.WritePacked(ShipStatus.Instance.NetId);
+			writer.Write((byte)RpcCalls.SpiritGuideMessage);
+			writer.WriteBytesAndSize(sprites);
+			writer.EndMessage();
+
+			msgCount++;
+		}
+
+		public void QueuePet(PlayerControl source, Vector2 playerPos, Vector2 petPos)
+		{
+			if((IsGlobal || AmTarget) && !skipLocalHandling)
+			{
+				source.MyPhysics.PetPet(playerPos, petPos);
+				if(AmTarget) return;
+			}
+			else if(IsGlobal || AmTarget)
+			{
+				if(AmTarget) return;
+			}
+
+			writer.StartMessage((byte)GameDataTypes.RpcFlag);
+			writer.WritePacked(source.MyPhysics.NetId);
+			writer.Write((byte)RpcCalls.Pet);
+			NetHelpers.WriteVector2(playerPos, writer);
+			NetHelpers.WriteVector2(petPos, writer);
+			writer.EndMessage();
+
+			msgCount++;
+		}
+
+		public void FinishBatch()
+		{
+			writer.EndMessage();
+
+			int packingLimit = AmongUsClient.Instance.GetMaxMessagePackingLimit();
+			if(msgCount > packingLimit)
+			{
+				Bane.Log.LogWarning($"BatchedMessage has {msgCount} packed messages, which exceeds the packed message limit of {packingLimit}. This may result in anticheat disconnections");
+			}
+
+			if(writer.Length > 1201)
+			{
+				Bane.Log.LogWarning($"BatchedMessage has a size of {writer.Length} bytes, which exceeds the vanilla limit of 1201 bytes. This may result in anticheat disconnections");
+			}
+
+			if(msgCount > 0)
+			{
+				AmongUsClient.Instance.SendOrDisconnect(writer);
+			}
+			writer.Recycle();
+		}
+	}
+}

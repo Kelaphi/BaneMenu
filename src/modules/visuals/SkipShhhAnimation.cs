@@ -1,0 +1,29 @@
+﻿using HarmonyLib;
+
+namespace BaneMenu.modules.visuals
+{
+	internal class SkipShhhAnimation : Module
+	{
+		public SkipShhhAnimation() : base("SkipShhhAnimation")
+		{
+			/* default off until config */ base.Enabled = false;
+		}
+
+		private static SkipShhhAnimation Instance
+		{
+			get { return ModuleManager.skipShhhAnimation; }
+		}
+
+		[HarmonyPatch(typeof(ShhhBehaviour), nameof(ShhhBehaviour.PlayAnimation))]
+		class PlayShhhAnimation
+		{
+			static bool Prefix()
+			{
+				if(!Instance.Enabled) return true;
+
+				HudManager.Instance.shhhEmblem.gameObject.SetActive(false);
+				return false;
+			}
+		}
+	}
+}
