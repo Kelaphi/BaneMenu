@@ -1,4 +1,4 @@
-<h1 align="center">🔪 BaneMenu</h1>
+<h1 align="center">🔪 BaneMenu 🔪</h1>
 
 <p align="center">
   <a href="https://github.com/Kelaphi/BaneMenu/releases/latest"><img src="https://img.shields.io/github/v/release/Kelaphi/BaneMenu?style=flat-square&label=Version&color=brightgreen" alt="Version"></a>
