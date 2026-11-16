@@ -96,11 +96,11 @@ Default open key is **Delete**. Use the section list on the left and feature pan
 
 ## Credits
 
-- Jelly
-- Kelaphi
-- hpwd
-- g0aty
-- TyGamer4
-- alexor_27
+- [Jelly](https://github.com/Kelaphi/BaneMenu)
+- [Kelaphi](https://github.com/Kelaphi/BaneMenu)
+- [hpwd](https://github.com/MrDiamond64/Hydra)
+- [g0aty](https://github.com/g0aty/SickoMenu)
+- [TyGamer4](https://github.com/NewTabGames/Hydralum)
+- [alexor_27](https://discord.gg/uacSnNpXN)
 
 ---
