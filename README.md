@@ -1,14 +1,11 @@
-# BaneMenu
-
-<div align="center">
-  <strong>BaneMenu v1.1.0</strong><br/>
-  The most powerful BepInEx mod menu for Among Us ever, with QoL tools, host utilities, troll options, visuals, and lobby protections.
-</div>
+<h1 align="center">🔪 BaneMenu</h1>
 
 <p align="center">
   <a href="https://github.com/Kelaphi/BaneMenu/releases/latest"><img src="https://img.shields.io/github/v/release/Kelaphi/BaneMenu?style=flat-square&label=Version&color=brightgreen" alt="Version"></a>
   <a href="https://github.com/Kelaphi/BaneMenu/releases/latest"><img src="https://img.shields.io/github/downloads/Kelaphi/BaneMenu/total?style=flat-square&label=Downloads&color=deeppink" alt="Downloads"></a>
 </p>
+
+The most powerful BepInEx mod menu for Among Us ever, with QoL tools, host utilities, troll options, visuals, and lobby protections.
 
 ## Table of Contents
 - [Features](#features)
